@@ -16,8 +16,9 @@ set_target_properties(file_hash PROPERTIES
 
 target_compile_definitions(file_hash PUBLIC DART_SHARED_LIB)
 
-# Link OpenSSL on Linux/Android for hardware-accelerated hashing
-if(UNIX AND NOT APPLE)
+# Link OpenSSL on Linux (not Android) for hardware-accelerated hashing
+# Android doesn't have OpenSSL in the NDK, so we use a bundled pure-C implementation
+if(UNIX AND NOT APPLE AND NOT ANDROID)
   find_package(OpenSSL REQUIRED)
   target_link_libraries(file_hash PRIVATE OpenSSL::Crypto)
 endif()
@@ -25,4 +26,9 @@ endif()
 if (ANDROID)
   # Support Android 15 16k page size
   target_link_options(file_hash PRIVATE "-Wl,-z,max-page-size=16384")
+
+  # Enable ARM crypto extensions for hardware-accelerated SHA256 on ARM64
+  if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+    target_compile_options(file_hash PRIVATE -march=armv8-a+crypto)
+  endif()
 endif()

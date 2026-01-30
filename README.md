@@ -6,32 +6,53 @@ Hardware-accelerated SHA-256 file hashing for Flutter using native platform APIs
 
 ### Platform-Specific APIs
 
-- **macOS/iOS**: CommonCrypto (Apple's hardware-accelerated crypto framework)
-- **Windows**: CNG (Cryptography Next Generation) API
-- **Linux/Android**: OpenSSL (automatically uses Intel SHA-NI or ARM Crypto Extensions when available)
+| Platform             | Implementation         | Hardware Accelerated |
+| -------------------- | ---------------------- | -------------------- |
+| macOS/iOS            | CommonCrypto           | ✅ Yes               |
+| Windows              | CNG (BCrypt)           | ✅ Yes               |
+| Linux                | OpenSSL                | ✅ Yes               |
+| Android ARM64        | ARM Crypto Extensions  | ✅ Yes               |
+| Android (other ABIs) | Pure C                 | ❌ No (fallback)     |
 
-### Hardware Acceleration Support
+### Hardware Acceleration Details
 
-**Intel/AMD (x86_64):**
+**macOS/iOS:**
+- Uses Apple's CommonCrypto framework
+- Hardware acceleration via Secure Enclave on supported devices
 
-- SHA-NI (SHA New Instructions)
+**Windows:**
+- Uses Cryptography Next Generation (CNG) API via BCrypt
+- Hardware acceleration on modern Intel/AMD processors
+
+**Linux:**
+- Uses OpenSSL EVP API
+- Automatically uses Intel SHA-NI or ARM Crypto Extensions when available
 - Supported CPUs: Intel Ice Lake+, Goldmont+, AMD Zen (all generations)
 
-**ARM (Android/Linux):**
+**Android ARM64 (`arm64-v8a`):**
+- Uses ARMv8 Cryptography Extensions via NEON intrinsics
+- Hardware instructions: `vsha256hq_u32`, `vsha256h2q_u32`, `vsha256su0q_u32`, `vsha256su1q_u32`
+- Available on most 64-bit ARM processors (2015+)
+- Zero external dependencies - compiled directly into the native library
 
-- ARMv8 Cryptography Extensions
-- Available in most 64-bit ARM processors (2015+)
-- Nearly all modern Android devices
+**Android (other architectures):**
+- `armeabi-v7a`, `x86`, `x86_64` fall back to a pure-C SHA256 implementation
+- Functionally correct, but not hardware accelerated
 
-OpenSSL automatically detects and enables hardware acceleration at runtime when available.
+### Why Not OpenSSL on Android?
+
+The Android NDK does **not** include a public, linkable cryptography library. Although Android devices contain BoringSSL internally, Google restricts access to it. Linking against the system's `/system/lib64/libcrypto.so` is unsafe because the ABI changes between Android versions.
+
+The ARM intrinsics approach provides:
+- **Zero external dependencies** - no need to bundle OpenSSL/BoringSSL
+- **Negligible APK size impact** - just a few KB of native code
+- **Maximum performance** on ARM64 devices (the vast majority of modern Android devices)
 
 ## Dependencies
 
-### Linux/Android
+### Linux
 
-OpenSSL is required for Linux and Android builds. Most systems have it pre-installed.
-
-**Linux:**
+OpenSSL is required for Linux builds. Most systems have it pre-installed.
 
 ```bash
 # Debian/Ubuntu
@@ -44,11 +65,6 @@ sudo dnf install openssl-devel
 sudo pacman -S openssl
 ```
 
-**Android:**
+### macOS/iOS/Windows/Android
 
-- OpenSSL is included in the Android NDK
-- No additional setup required
-
-### macOS/iOS/Windows
-
-No additional dependencies - uses platform-native APIs.
+No additional dependencies - uses platform-native APIs or bundled implementations.
