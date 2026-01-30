@@ -16,6 +16,12 @@ set_target_properties(file_hash PROPERTIES
 
 target_compile_definitions(file_hash PUBLIC DART_SHARED_LIB)
 
+# Link OpenSSL on Linux/Android for hardware-accelerated hashing
+if(UNIX AND NOT APPLE)
+  find_package(OpenSSL REQUIRED)
+  target_link_libraries(file_hash PRIVATE OpenSSL::Crypto)
+endif()
+
 if (ANDROID)
   # Support Android 15 16k page size
   target_link_options(file_hash PRIVATE "-Wl,-z,max-page-size=16384")

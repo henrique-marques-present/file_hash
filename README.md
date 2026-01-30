@@ -1,92 +1,54 @@
 # file_hash
 
-A new Flutter FFI plugin project.
+Hardware-accelerated SHA-256 file hashing for Flutter using native platform APIs.
 
-## Getting Started
+## Implementation
 
-This project is a starting point for a Flutter
-[FFI plugin](https://flutter.dev/to/ffi-package),
-a specialized package that includes native code directly invoked with Dart FFI.
+### Platform-Specific APIs
 
-## Project structure
+- **macOS/iOS**: CommonCrypto (Apple's hardware-accelerated crypto framework)
+- **Windows**: CNG (Cryptography Next Generation) API
+- **Linux/Android**: OpenSSL (automatically uses Intel SHA-NI or ARM Crypto Extensions when available)
 
-This template uses the following structure:
+### Hardware Acceleration Support
 
-* `src`: Contains the native source code, and a CmakeFile.txt file for building
-  that source code into a dynamic library.
+**Intel/AMD (x86_64):**
 
-* `lib`: Contains the Dart code that defines the API of the plugin, and which
-  calls into the native code using `dart:ffi`.
+- SHA-NI (SHA New Instructions)
+- Supported CPUs: Intel Ice Lake+, Goldmont+, AMD Zen (all generations)
 
-* platform folders (`android`, `ios`, `windows`, etc.): Contains the build files
-  for building and bundling the native code library with the platform application.
+**ARM (Android/Linux):**
 
-## Building and bundling native code
+- ARMv8 Cryptography Extensions
+- Available in most 64-bit ARM processors (2015+)
+- Nearly all modern Android devices
 
-The `pubspec.yaml` specifies FFI plugins as follows:
+OpenSSL automatically detects and enables hardware acceleration at runtime when available.
 
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        ffiPlugin: true
+## Dependencies
+
+### Linux/Android
+
+OpenSSL is required for Linux and Android builds. Most systems have it pre-installed.
+
+**Linux:**
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install libssl-dev
+
+# Fedora/RHEL
+sudo dnf install openssl-devel
+
+# Arch Linux
+sudo pacman -S openssl
 ```
 
-This configuration invokes the native build for the various target platforms
-and bundles the binaries in Flutter applications using these FFI plugins.
+**Android:**
 
-This can be combined with dartPluginClass, such as when FFI is used for the
-implementation of one platform in a federated plugin:
+- OpenSSL is included in the Android NDK
+- No additional setup required
 
-```yaml
-  plugin:
-    implements: some_other_plugin
-    platforms:
-      some_platform:
-        dartPluginClass: SomeClass
-        ffiPlugin: true
-```
+### macOS/iOS/Windows
 
-A plugin can have both FFI and method channels:
-
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        pluginClass: SomeName
-        ffiPlugin: true
-```
-
-The native build systems that are invoked by FFI (and method channel) plugins are:
-
-* For Android: Gradle, which invokes the Android NDK for native builds.
-  * See the documentation in android/build.gradle.
-* For iOS and MacOS: Xcode, via CocoaPods.
-  * See the documentation in ios/file_hash.podspec.
-  * See the documentation in macos/file_hash.podspec.
-* For Linux and Windows: CMake.
-  * See the documentation in linux/CMakeLists.txt.
-  * See the documentation in windows/CMakeLists.txt.
-
-## Binding to native code
-
-To use the native code, bindings in Dart are needed.
-To avoid writing these by hand, they are generated from the header file
-(`src/file_hash.h`) by `package:ffigen`.
-Regenerate the bindings by running `dart run ffigen --config ffigen.yaml`.
-
-## Invoking native code
-
-Very short-running native functions can be directly invoked from any isolate.
-For example, see `sum` in `lib/file_hash.dart`.
-
-Longer-running functions should be invoked on a helper isolate to avoid
-dropping frames in Flutter applications.
-For example, see `sumAsync` in `lib/file_hash.dart`.
-
-## Flutter help
-
-For help getting started with Flutter, view our
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
+No additional dependencies - uses platform-native APIs.
