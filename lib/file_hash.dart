@@ -15,7 +15,7 @@ typedef DartFreeFunc = void Function(Pointer<Utf8>);
 class FileHash {
   /// Hashes a file in a separate background thread (Isolate).
   /// This prevents the UI from freezing.
-  static Future<String?> hashFile(String filePath) async {
+  static Future<String?> computeSha256(String filePath) async {
     // Isolate.run automatically spawns a thread, runs the code,
     // returns the result, and closes the thread.
     return await Isolate.run(() {
