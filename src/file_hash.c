@@ -20,7 +20,7 @@
 
 #else
     // Android / Linux (Hardware Accelerated via OpenSSL)
-    #include <openssl/sha.h>
+    #include <openssl/evp.h>
     #define USE_OPENSSL 1
 #endif
 
@@ -75,14 +75,39 @@ FFI_PLUGIN_EXPORT char* sha256_file_native(char* filepath) {
 
     // --- ENGINE: OpenSSL (Linux/Android) ---
     #else
-        printf("Native: Using OpenSSL (Hardware Accelerated)\n");
-        SHA256_CTX ctx;
-        SHA256_Init(&ctx);
+        printf("Native: Using OpenSSL EVP (Hardware Accelerated)\n");
+        EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+        if (!ctx) {
+            free(buffer);
+            fclose(file);
+            return NULL;
+        }
+
+        if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
+            EVP_MD_CTX_free(ctx);
+            free(buffer);
+            fclose(file);
+            return NULL;
+        }
 
         while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
-            SHA256_Update(&ctx, buffer, bytesRead);
+            if (EVP_DigestUpdate(ctx, buffer, bytesRead) != 1) {
+                EVP_MD_CTX_free(ctx);
+                free(buffer);
+                fclose(file);
+                return NULL;
+            }
         }
-        SHA256_Final(hash, &ctx);
+
+        unsigned int hash_len = 0;
+        if (EVP_DigestFinal_ex(ctx, hash, &hash_len) != 1) {
+            EVP_MD_CTX_free(ctx);
+            free(buffer);
+            fclose(file);
+            return NULL;
+        }
+
+        EVP_MD_CTX_free(ctx);
     #endif
 
     // Cleanup
